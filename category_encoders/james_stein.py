@@ -1,20 +1,21 @@
-"""James-Stein"""
+"""James-Stein."""
+
 import numpy as np
 import pandas as pd
 import scipy
-from scipy import optimize
-from sklearn.base import BaseEstimator
-from category_encoders.ordinal import OrdinalEncoder
-import category_encoders.utils as util
 from sklearn.utils.random import check_random_state
+
+import category_encoders.utils as util
+from category_encoders.ordinal import OrdinalEncoder
 
 __author__ = 'Jan Motl'
 
 
-class JamesSteinEncoder(BaseEstimator, util.TransformerWithTargetMixin):
+class JamesSteinEncoder( util.SupervisedTransformerMixin,util.BaseEncoder):
     """James-Stein estimator.
 
-    Supported targets: binomial and continuous. For polynomial target support, see PolynomialWrapper.
+    Supported targets: binomial and continuous.
+    For polynomial target support, see PolynomialWrapper.
 
     For feature value `i`, James-Stein estimator returns a weighted average of:
 
@@ -23,7 +24,7 @@ class JamesSteinEncoder(BaseEstimator, util.TransformerWithTargetMixin):
 
     This can be written as::
 
-        JS_i = (1-B)*mean(y_i) + B*mean(y)
+        JS_i = (1 - B) * mean(y_i) + B * mean(y)
 
     The question is, what should be the weight `B`?
     If we put too much weight on the conditional mean value, we will overfit.
@@ -33,7 +34,7 @@ class JamesSteinEncoder(BaseEstimator, util.TransformerWithTargetMixin):
     The intuition is: If the estimate of `mean(y_i)` is unreliable (`y_i` has high variance),
     we should put more weight on `mean(y)`. Stein put it into an equation as::
 
-        B = var(y_i) / (var(y_i)+var(y))
+        B = var(y_i) / (var(y_i) + var(y))
 
     The only remaining issue is that we do not know `var(y)`, let alone `var(y_i)`.
     Hence, we have to estimate the variances. But how can we reliably estimate the
@@ -65,7 +66,6 @@ class JamesSteinEncoder(BaseEstimator, util.TransformerWithTargetMixin):
 
     Parameters
     ----------
-
     verbose: int
         integer indicating verbosity of the output. 0 for none.
     cols: list
@@ -73,15 +73,19 @@ class JamesSteinEncoder(BaseEstimator, util.TransformerWithTargetMixin):
     drop_invariant: bool
         boolean for whether or not to drop encoded columns with 0 variance.
     return_df: bool
-        boolean for whether to return a pandas DataFrame from transform (otherwise it will be a numpy array).
+        boolean for whether to return a pandas DataFrame from transform
+        (otherwise it will be a numpy array).
     handle_missing: str
-        options are 'return_nan', 'error' and 'value', defaults to 'value', which returns the prior probability.
+        options are 'return_nan', 'error' and 'value', defaults to 'value',
+        which returns the prior probability.
     handle_unknown: str
-        options are 'return_nan', 'error' and 'value', defaults to 'value', which returns the prior probability.
+        options are 'return_nan', 'error' and 'value', defaults to 'value',
+        which returns the prior probability.
     model: str
         options are 'pooled', 'beta', 'binary' and 'independent', defaults to 'independent'.
     randomized: bool,
-        adds normal (Gaussian) distribution noise into training data in order to decrease overfitting (testing data are untouched).
+        adds normal (Gaussian) distribution noise into training data in order to decrease
+        overfitting (testing data are untouched).
     sigma: float
         standard deviation (spread or "width") of the normal distribution.
 
@@ -90,38 +94,43 @@ class JamesSteinEncoder(BaseEstimator, util.TransformerWithTargetMixin):
     -------
     >>> from category_encoders import *
     >>> import pandas as pd
-    >>> from sklearn.datasets import load_boston
-    >>> bunch = load_boston()
+    >>> from sklearn.datasets import fetch_openml
+    >>> bunch = fetch_openml(name='house_prices', as_frame=True)
+    >>> display_cols = [
+    ...     'Id',
+    ...     'MSSubClass',
+    ...     'MSZoning',
+    ...     'LotFrontage',
+    ...     'YearBuilt',
+    ...     'Heating',
+    ...     'CentralAir',
+    ... ]
     >>> y = bunch.target
-    >>> X = pd.DataFrame(bunch.data, columns=bunch.feature_names)
-    >>> enc = JamesSteinEncoder(cols=['CHAS', 'RAD']).fit(X, y)
+    >>> X = pd.DataFrame(bunch.data, columns=bunch.feature_names)[display_cols]
+    >>> enc = JamesSteinEncoder(cols=['CentralAir', 'Heating']).fit(X, y)
     >>> numeric_dataset = enc.transform(X)
     >>> print(numeric_dataset.info())
     <class 'pandas.core.frame.DataFrame'>
-    RangeIndex: 506 entries, 0 to 505
-    Data columns (total 13 columns):
-    CRIM       506 non-null float64
-    ZN         506 non-null float64
-    INDUS      506 non-null float64
-    CHAS       506 non-null float64
-    NOX        506 non-null float64
-    RM         506 non-null float64
-    AGE        506 non-null float64
-    DIS        506 non-null float64
-    RAD        506 non-null float64
-    TAX        506 non-null float64
-    PTRATIO    506 non-null float64
-    B          506 non-null float64
-    LSTAT      506 non-null float64
-    dtypes: float64(13)
-    memory usage: 51.5 KB
+    RangeIndex: 1460 entries, 0 to 1459
+    Data columns (total 7 columns):
+     #   Column       Non-Null Count  Dtype
+    ---  ------       --------------  -----
+     0   Id           1460 non-null   float64
+     1   MSSubClass   1460 non-null   float64
+     2   MSZoning     1460 non-null   object
+     3   LotFrontage  1201 non-null   float64
+     4   YearBuilt    1460 non-null   float64
+     5   Heating      1460 non-null   float64
+     6   CentralAir   1460 non-null   float64
+    dtypes: float64(6), object(1)
+    memory usage: 80.0+ KB
     None
 
     References
     ----------
 
-    .. [1] Parametric empirical Bayes inference: Theory and applications, equations 1.19 & 1.20, from
-    https://www.jstor.org/stable/2287098
+    .. [1] Parametric empirical Bayes inference: Theory and applications, equations 1.19 & 1.20,
+    from https://www.jstor.org/stable/2287098
 
     .. [2] Empirical Bayes for multiple sample sizes, from
     http://chris-said.io/2017/05/03/empirical-bayes-for-multiple-sample-sizes/
@@ -137,65 +146,40 @@ class JamesSteinEncoder(BaseEstimator, util.TransformerWithTargetMixin):
 
     """
 
-    def __init__(self, verbose=0, cols=None, drop_invariant=False, return_df=True,
-                 handle_unknown='value', handle_missing='value', model='independent', random_state=None, randomized=False, sigma=0.05):
-        self.verbose = verbose
-        self.return_df = return_df
-        self.drop_invariant = drop_invariant
-        self.drop_cols = []
-        self.cols = cols
+    prefit_ordinal = True
+    encoding_relation = util.EncodingRelation.ONE_TO_ONE
+
+    def __init__(
+        self,
+        verbose=0,
+        cols=None,
+        drop_invariant=False,
+        return_df=True,
+        handle_unknown='value',
+        handle_missing='value',
+        model='independent',
+        random_state=None,
+        randomized=False,
+        sigma=0.05,
+    ):
+        super().__init__(
+            verbose=verbose,
+            cols=cols,
+            drop_invariant=drop_invariant,
+            return_df=return_df,
+            handle_unknown=handle_unknown,
+            handle_missing=handle_missing,
+        )
         self.ordinal_encoder = None
-        self._dim = None
         self.mapping = None
-        self.handle_unknown = handle_unknown
-        self.handle_missing = handle_missing
         self.random_state = random_state
         self.randomized = randomized
         self.sigma = sigma
         self.model = model
-        self.feature_names = None
 
-    # noinspection PyUnusedLocal
-    def fit(self, X, y, **kwargs):
-        """Fit encoder according to X and binary y.
-
-        Parameters
-        ----------
-
-        X : array-like, shape = [n_samples, n_features]
-            Training vectors, where n_samples is the number of samples
-            and n_features is the number of features.
-        y : array-like, shape = [n_samples]
-            Binary target values.
-
-        Returns
-        -------
-
-        self : encoder
-            Returns self.
-
-        """
-
-        # Unite parameters into pandas types
-        X, y = util.convert_inputs(X, y)
-
-        self._dim = X.shape[1]
-
-        # If columns aren't passed, just use every string column
-        if self.cols is None:
-            self.cols = util.get_obj_cols(X)
-        else:
-            self.cols = util.convert_cols_to_list(self.cols)
-
-        if self.handle_missing == 'error':
-            if X[self.cols].isnull().any().any():
-                raise ValueError('Columns to be encoded can not contain null')
-
+    def _fit(self, X, y, **kwargs):
         self.ordinal_encoder = OrdinalEncoder(
-            verbose=self.verbose,
-            cols=self.cols,
-            handle_unknown='value',
-            handle_missing='value'
+            verbose=self.verbose, cols=self.cols, handle_unknown='value', handle_missing='value'
         )
         self.ordinal_encoder = self.ordinal_encoder.fit(X)
         X_ordinal = self.ordinal_encoder.transform(X)
@@ -211,72 +195,29 @@ class JamesSteinEncoder(BaseEstimator, util.TransformerWithTargetMixin):
             # The label must be binary with values {0,1}
             unique = y.unique()
             if len(unique) != 2:
-                raise ValueError("The target column y must be binary. But the target contains " + str(len(unique)) + " unique value(s).")
-            if y.isnull().any():
-                raise ValueError("The target column y must not contain missing values.")
+                raise ValueError(
+                    'The target column y must be binary. But the target contains '
+                    + str(len(unique))
+                    + ' unique value(s).'
+                )
+            if y.isna().any():
+                raise ValueError('The target column y must not contain missing values.')
             if np.max(unique) < 1:
-                raise ValueError("The target column y must be binary with values {0, 1}. Value 1 was not found in the target.")
+                raise ValueError(
+                    'The target column y must be binary with values {0, 1}. '
+                    'Value 1 was not found in the target.'
+                )
             if np.min(unique) > 0:
-                raise ValueError("The target column y must be binary with values {0, 1}. Value 0 was not found in the target.")
+                raise ValueError(
+                    'The target column y must be binary with values {0, 1}. '
+                    'Value 0 was not found in the target.'
+                )
             # Perform the training
             self.mapping = self._train_log_odds_ratio(X_ordinal, y)
         else:
             raise ValueError("model='" + str(self.model) + "' is not a recognized option")
 
-        X_temp = self.transform(X, override_return_df=True)
-        self.feature_names = X_temp.columns.tolist()
-
-        # Store column names with approximately constant variance on the training data
-        if self.drop_invariant:
-            self.drop_cols = []
-            generated_cols = util.get_generated_cols(X, X_temp, self.cols)
-            self.drop_cols = [x for x in generated_cols if X_temp[x].var() <= 10e-5]
-            try:
-                [self.feature_names.remove(x) for x in self.drop_cols]
-            except KeyError as e:
-                if self.verbose > 0:
-                    print("Could not remove column from feature names."
-                    "Not found in generated cols.\n{}".format(e))
-        return self
-
-    def transform(self, X, y=None, override_return_df=False):
-        """Perform the transformation to new categorical data. When the data are used for model training,
-        it is important to also pass the target in order to apply leave one out.
-
-        Parameters
-        ----------
-
-        X : array-like, shape = [n_samples, n_features]
-        y : array-like, shape = [n_samples] when transform by leave one out
-            None, when transform without target information (such as transform test set)
-
-
-
-        Returns
-        -------
-
-        p : array, shape = [n_samples, n_numeric + N]
-            Transformed values with encoding applied.
-
-        """
-
-        if self.handle_missing == 'error':
-            if X[self.cols].isnull().any().any():
-                raise ValueError('Columns to be encoded can not contain null')
-
-        if self._dim is None:
-            raise ValueError('Must train encoder before it can be used to transform data.')
-
-        # Unite the input into pandas types
-        X, y = util.convert_inputs(X, y, deep=True)
-
-        # Then make sure that it is the right size
-        if X.shape[1] != self._dim:
-            raise ValueError('Unexpected input dimension %d, expected %d' % (X.shape[1], self._dim,))
-
-        if not list(self.cols):
-            return X
-
+    def _transform(self, X, y=None):
         X = self.ordinal_encoder.transform(X)
 
         if self.handle_unknown == 'error':
@@ -285,17 +226,13 @@ class JamesSteinEncoder(BaseEstimator, util.TransformerWithTargetMixin):
 
         # Loop over columns and replace nominal values with WOE
         X = self._score(X, y)
+        return X
 
-        # Postprocessing
-        # Note: We should not even convert these columns.
-        if self.drop_invariant:
-            for col in self.drop_cols:
-                X.drop(col, 1, inplace=True)
-
-        if self.return_df or override_return_df:
-            return X
-        else:
-            return X.values
+    def __sklearn_tags__(self) -> util.EncoderTags:
+        """Set scikit transformer tags."""
+        tags = super().__sklearn_tags__()
+        tags.predict_depends_on_y = True
+        return tags
 
     def _train_pooled(self, X, y):
         # Implemented based on reference [1]
@@ -315,29 +252,32 @@ class JamesSteinEncoder(BaseEstimator, util.TransformerWithTargetMixin):
             # Calculate sum and count of the target for each unique value in the feature col
             stats = y.groupby(X[col]).agg(['mean', 'count'])
 
-            # See: Computer Age Statistical Inference: Algorithms, Evidence, and Data Science (Bradley Efron & Trevor Hastie, 2016)
-            #   Equations 7.19 and 7.20.
+            # See: Computer Age Statistical Inference: Algorithms, Evidence, and Data Science
+            # (Bradley Efron & Trevor Hastie, 2016) Equations 7.19 and 7.20.
             # Note: The equations assume normal distribution of the label. But our label is p(y|x),
-            # which is definitely not normally distributed as probabilities are bound to lie on interval 0..1.
+            # which is definitely not normally distributed as probabilities are bound to lie on
+            # interval 0..1.
             # We make this approximation because Efron does it as well.
 
             # Equation 7.19
             # Explanation of the equation:
             #   https://stats.stackexchange.com/questions/191444/variance-in-estimating-p-for-a-binomial-distribution
             # if stats['count'].var() > 0:
-            #     warnings.warn('The pooled model assumes that each category is observed exactly N times. This was violated in "' + str(col) +'" column. Consider comparing the accuracy of this model to "independent" model.')
+            #     warnings.warn('The pooled model assumes that each category is observed
+            #     exactly N times. This was violated in "' + str(col) +'" column.
+            #     Consider comparing the accuracy of this model to "independent" model.')
             # This is a parametric estimate of var(p) in the binomial distribution.
             # We do not use it because we also want to support non-binary targets.
             # The difference in the estimates is small.
             #   variance = prior * (1 - prior) / stats['count'].mean()
             # This is a squared estimate of standard error of the mean:
             #   https://en.wikipedia.org/wiki/Standard_error
-            variance = target_var/(stats['count'].mean())
+            variance = target_var / (stats['count'].mean())
 
             # Equation 7.20
-            SSE = ((stats['mean']-prior)**2).sum()  # Sum of Squared Errors
+            SSE = ((stats['mean'] - prior) ** 2).sum()  # Sum of Squared Errors
             if SSE > 0:  # We have to avoid division by zero
-                B = ((len(stats['count'])-3)*variance) / SSE
+                B = ((len(stats['count']) - 3) * variance) / SSE
                 B = B.clip(0, 1)
                 estimate = prior + (1 - B) * (stats['mean'] - prior)
             else:
@@ -381,28 +321,34 @@ class JamesSteinEncoder(BaseEstimator, util.TransformerWithTargetMixin):
             # Calculate sum and count of the target for each unique value in the feature col
             stats = y.groupby(X[col]).agg(['mean', 'var'])
 
-            i_var = stats['var'].fillna(0)   # When we do not have more than 1 sample, assume 0 variance
+            i_var = stats['var'].fillna(
+                0
+            )  # When we do not have more than 1 sample, assume 0 variance
             unique_cnt = len(X[col].unique())
 
             # See: Parametric Empirical Bayes Inference: Theory and Applications (Morris, 1983)
             #   Equations 1.19 and 1.20.
             # Note: The equations assume normal distribution of the label. But our label is p(y|x),
-            # which is definitely not normally distributed as probabilities are bound to lie on interval 0..1.
+            # which is definitely not normally distributed as probabilities are bound to lie
+            # on interval 0..1.
             # Nevertheless, it seems to perform surprisingly well. This is in agreement with:
             #   Data Analysis with Stein's Estimator and Its Generalizations (Efron & Morris, 1975)
             # The equations are similar to James-Stein estimator, as listed in:
             #   Stein's Paradox in Statistics (Efron & Morris, 1977)
             # Or:
-            #   Computer Age Statistical Inference: Algorithms, Evidence, and Data Science (Efron & Hastie, 2016)
-            #   Equations 7.19 and 7.20.
-            # The difference is that they have equal count of observations per estimated variable, while we generally
-            # do not have that. Nice discussion about that is given at:
+            #   Computer Age Statistical Inference: Algorithms, Evidence, and Data Science
+            #   (Efron & Hastie, 2016) Equations 7.19 and 7.20.
+            # The difference is that they have equal count of observations per estimated variable,
+            # while we generally # do not have that.
+            # Nice discussion about that is given at:
             #   http://chris-said.io/2017/05/03/empirical-bayes-for-multiple-sample-sizes/
-            smoothing = i_var / (global_var + i_var) * (unique_cnt-3) / (unique_cnt-1)
+            smoothing = i_var / (global_var + i_var) * (unique_cnt - 3) / (unique_cnt - 1)
             smoothing = 1 - smoothing
-            smoothing = smoothing.clip(lower=0, upper=1)   # Smoothing should be in the interval <0,1>
+            smoothing = smoothing.clip(
+                lower=0, upper=1
+            )  # Smoothing should be in the interval <0,1>
 
-            estimate = smoothing*(stats['mean']) + (1-smoothing)*prior
+            estimate = smoothing * (stats['mean']) + (1 - smoothing) * prior
 
             # Ignore unique values. This helps to prevent overfitting on id-like columns
             if len(stats['mean']) == global_count:
@@ -438,10 +384,10 @@ class JamesSteinEncoder(BaseEstimator, util.TransformerWithTargetMixin):
         #   https://en.wikipedia.org/wiki/Newton%27s_method
         # But we just use sklearn minimizer.
         def get_best_sigma(sigma, mu_k, sigma_k, K):
-            global mu                               # Ugly. But I want to be able to read it once the optimization ends.
-            w_k = 1. / (sigma ** 2 + sigma_k ** 2)  # Weights depends on sigma
-            mu = sum(w_k * mu_k) / sum(w_k)         # Mu transitively depends on sigma
-            total = sum(w_k * (mu_k - mu) ** 2)     # We want this to be close to K-1
+            global mu  # Ugly. But I want to be able to read it once the optimization ends.
+            w_k = 1.0 / (sigma**2 + sigma_k**2)  # Weights depends on sigma
+            mu = sum(w_k * mu_k) / sum(w_k)  # Mu transitively depends on sigma
+            total = sum(w_k * (mu_k - mu) ** 2)  # We want this to be close to K-1
             loss = abs(total - (K - 1))
             return loss
 
@@ -458,8 +404,10 @@ class JamesSteinEncoder(BaseEstimator, util.TransformerWithTargetMixin):
             crosstable['E-A+'] = stats['count'] - stats['sum']
             crosstable['E+A-'] = global_sum - stats['sum']
             crosstable['E+A+'] = stats['sum']
-            index = crosstable.index.values
-            crosstable = np.array(crosstable, dtype=np.float32)  # The argument unites the types into float
+            index = crosstable.index
+            crosstable = np.array(
+                crosstable, dtype=np.float32
+            )  # The argument unites the types into float
 
             # Count of contingency tables.
             K = len(crosstable)
@@ -470,23 +418,36 @@ class JamesSteinEncoder(BaseEstimator, util.TransformerWithTargetMixin):
             else:
                 if K > 1:  # We want to avoid division by zero in y_k calculation
                     # Estimate log-odds ratios with Yates correction as listed on page 5.
-                    mu_k = np.log((crosstable[:, 0] + 0.5) * (crosstable[:, 3] + 0.5) / ((crosstable[:, 1] + 0.5) * (crosstable[:, 2] + 0.5)))
+                    mu_k = np.log(
+                        (crosstable[:, 0] + 0.5)
+                        * (crosstable[:, 3] + 0.5)
+                        / ((crosstable[:, 1] + 0.5) * (crosstable[:, 2] + 0.5))
+                    )
 
                     # Standard deviation estimate for 2x2 contingency table as given in equation 2.
                     # The explanation of the equation is given in:
                     #   https://stats.stackexchange.com/questions/266098/how-do-i-calculate-the-standard-deviation-of-the-log-odds
-                    sigma_k = np.sqrt(np.sum(1. / (crosstable + 0.5), axis=1))
+                    sigma_k = np.sqrt(np.sum(1.0 / (crosstable + 0.5), axis=1))
 
                     # Estimate the sigma and mu. Sigma is non-negative.
-                    result = scipy.optimize.minimize(get_best_sigma, x0=1e-4, args=(mu_k, sigma_k, K), bounds=[(0, np.inf)], method='TNC', tol=1e-12, options={'gtol': 1e-12, 'ftol': 1e-12, 'eps': 1e-12})
+                    result = scipy.optimize.minimize(
+                        get_best_sigma,
+                        x0=1e-4,
+                        args=(mu_k, sigma_k, K),
+                        bounds=[(0, np.inf)],
+                        method='TNC',
+                        tol=1e-12,
+                        options={'gtol': 1e-12, 'ftol': 1e-12, 'eps': 1e-12},
+                    )
                     sigma = result.x[0]
 
                     # Empirical Bayes follows equation 7.
-                    # However, James-Stein estimator behaves perversely when K < 3. Hence, we clip the B into interval <0,1>.
+                    # However, James-Stein estimator behaves perversely when K < 3.
+                    # Hence, we clip the B into interval <0,1>.
                     # Literature reference for the clipping:
-                    #   Estimates of Income for Small Places: An Application of James-Stein Procedures to Census Data (Fay & Harriout, 1979),
-                    # page 270.
-                    B = (K - 3) * sigma_k ** 2 / ((K - 1) * (sigma ** 2 + sigma_k ** 2))
+                    #   Estimates of Income for Small Places: An Application of James-Stein
+                    #   Procedures to Census Data (Fay & Harriout, 1979), page 270.
+                    B = (K - 3) * sigma_k**2 / ((K - 1) * (sigma**2 + sigma_k**2))
                     B = B.clip(0, 1)
                     y_k = mu + (1 - B) * (mu_k - mu)
 
@@ -530,7 +491,7 @@ class JamesSteinEncoder(BaseEstimator, util.TransformerWithTargetMixin):
             # See: Stein's paradox and group rationality (Romeijn, 2017), page 14
             smoothing = stats['count'] / (stats['count'] + global_count)
 
-            estimate = smoothing*(stats['mean']) + (1-smoothing)*prior
+            estimate = smoothing * (stats['mean']) + (1 - smoothing) * prior
 
             # Ignore unique values. This helps to prevent overfitting on id-like columns
             if len(stats['mean']) == global_count:
@@ -551,6 +512,7 @@ class JamesSteinEncoder(BaseEstimator, util.TransformerWithTargetMixin):
 
         return mapping
 
+    # todo this score function is copied 4 times
     def _score(self, X, y):
         for col in self.cols:
             # Score the column
@@ -559,22 +521,6 @@ class JamesSteinEncoder(BaseEstimator, util.TransformerWithTargetMixin):
             # Randomization is meaningful only for training data -> we do it only if y is present
             if self.randomized and y is not None:
                 random_state_generator = check_random_state(self.random_state)
-                X[col] = (X[col] * random_state_generator.normal(1., self.sigma, X[col].shape[0]))
+                X[col] = X[col] * random_state_generator.normal(1.0, self.sigma, X[col].shape[0])
 
         return X
-
-    def get_feature_names(self):
-        """
-        Returns the names of all transformed / added columns.
-
-        Returns
-        -------
-        feature_names: list
-            A list with all feature names transformed or added.
-            Note: potentially dropped features are not included!
-
-        """
-        if not isinstance(self.feature_names, list):
-            raise ValueError("Estimator has to be fitted to return feature names.")
-        else:
-            return self.feature_names

@@ -1,3 +1,111 @@
+v.2.8.0
+=======
+
+* Fix: Support new concept of sklearn tags, now requiring sklearn >= 1.6.0
+* Fix: Docs deployment
+
+v.2.7.0
+=======
+
+* Refactor: Use poetry as packaging tool
+* Refactor: Add more typing
+* Refactor: Add format checks
+* Change `feature_names_in_` and `feature_names_out_` to `np.ndarray` instead of lists.
+* Fixed: Support python 3.11, 3.12, 3.13.
+* Breaking: Drop support for python 3.7, 3.8 and 3.9
+* Breaking: No longer add intercept in contrast coding schemes.
+
+v2.6.4
+======
+* fixed: Future Warning in Pandas
+* fixed: np.NaNs in numpy 2.x
+* improved: performance of the hashing encoder (about twice as fast)
+  * deprecate the `max_sample`` parameter, it has no use anymore
+  * add `process_creation_method` parameter
+  * use concurrent.futures.ProcessPoolExecutor instead of hand-managed queues
+  * optimisations to hashlib calls, remove python 2 checks, fork instead of spawn
+
+v2.6.3
+======
+* fixed: issue 424 - pandas NaNs
+* fixed: pandas deprecations and ruff linter suggestions
+* fixed: issue 421 - detect pandas categorical type as categorical column
+
+v2.6.2
+======
+* fixed: issue 414 - broken link
+* fixed: issue 412 - timestamp types in ordinal encoder
+* fixed: `importlib` instead of `pkg_resources`
+
+v2.6.1
+======
+* added: ignore option for one-hot-encoding
+* fixed: external dependency in unit test
+* fixed: gaps in ordinal encoding if nan values are present
+* fixed: sklearn compliance: add `feature_names_in_` attribute
+* fixed: sklearn compliance: `get_feature_names_out` function has the correct signature
+* fixed: add RankHotEncoder in documentation
+* fixed: return correct mapping in one hot encoder `category_mapping` property (issue #256)
+* refactor: quadratic runtime in ordinal encoder (issue #407)
+
+v2.6.0
+======
+* added gray encoder
+* added thermometer / rank-hot encoder
+* introduce compatibility with sklearn 1.2
+  * compatibility with `feature_names_out_`
+  * remove boston housing dataset
+  * drop support for dataframes with non-homogenous data types in column names (i.e. having both string and integer column names)
+* improve performance of hashing encoder
+* improve catboost documentation
+* fix inverse transform in baseN with special character column names (issue 392)
+* fix inverse transform of ordinal encoder with custom mapping (issue 202)
+* fix re-fittable polynomial wrapper (issue 313)
+* fix numerical stability for target encoding (issue 377)
+* change default parameters of target encoding (issue 327)
+* drop support for sklearn 0.x
+ 
+v2.5.1.post0
+============
+* fix pypi sdist
+
+v2.5.1
+======
+* Added base class for contrast coding schemes in order to make them more maintainable
+* Added hierarchical column feature in target encoder
+* Fixed maximum recursion depth bug in hashing encoder
+
+v2.5.0
+======
+
+* Introduce base class for encoders
+* Introduce tagging system on encoders and use it to parametrize tests
+* Drop support for python 3.5 and python 3.6
+* Require pandas >=1.0
+* Introduce f-strings
+* Make BinaryEncoder a BaseNEncoder for base=2
+* FutureWarning for TargetEncoder's default parameters
+* Made all encoders re-fittable on different datasets (c.f. issue 122)
+* Introduced tox.ini file for easier version testing
+ 
+v2.4.1
+======
+
+* Fixed a bug with categorical data type in LeaveOneOut encoder
+* Do not install examples as a package on its own
+ 
+v2.4.0
+======
+
+* improved documentation
+* fix bug in CatBoost encoder
+* fix future warnings with pandas
+* added tests for python 3.9 and 3.10 in pipeline
+* fix treating np.NaN and python None equal
+* only build docs on release
+* unified conversion of inputs pandas objects that are used internally including some bugfixes.
+* added quantile encoder and summary encoder
+ 
 v2.3.0
 ======
 

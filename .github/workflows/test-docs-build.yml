@@ -5,8 +5,15 @@ on:
 jobs:
   docs:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.12']
     steps:
-    - uses: actions/checkout@v1
-    - uses: ammaraskar/sphinx-action@master
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
       with:
-        docs-folder: "docs/"
+          python-version: ${{ matrix.python-version }}
+    - name: directly build sphinx (plugin only supports python 3.8)
+      run: |
+          pip install -r docs/requirements.txt
+          sphinx-build docs/source ./docs/build/html/
